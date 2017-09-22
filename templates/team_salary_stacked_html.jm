@@ -1,0 +1,67 @@
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script src="https://code.highcharts.com/modules/drilldown.js"></script>
+
+<div id="container" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+
+<script>
+
+    Highcharts.chart("container", {
+    chart: {
+        type: "column"
+    },
+    title: {
+        text: "2018-2019 NBA Salary Cap Visualization"
+    },
+    legend: {
+        enabled: false
+    },
+     xAxis: {
+      type: 'category'
+    },
+    yAxis: {
+      title: "Salary",
+      stackLabels: {
+            enabled: false,
+            style: {
+                fontWeight: 'bold',
+                color: (Highcharts.theme && Highcharts.theme.textColor) || 'gray'
+            }
+      },
+      plotBands: [{
+        color: "orange",
+        from: 103000000,
+        to: 104000000
+      }]
+    },
+     legend: {
+        align: 'right',
+        x: -30,
+        verticalAlign: 'top',
+        y: 25,
+        floating: true,
+        backgroundColor: (Highcharts.theme && Highcharts.theme.background2) || 'white',
+        borderColor: '#CCC',
+        borderWidth: 1,
+        shadow: false
+    },
+    plotOptions: {
+      column: {
+            stacking: 'normal',
+            dataLabels: {
+                enabled: false,
+                color: (Highcharts.theme && Highcharts.theme.dataLabelsColor) || 'white'
+            },
+            pointPadding: 0.2,
+            borderWidth: 0
+        }
+    },
+
+    series: {{ series_data }},
+
+    drilldown: {
+      series: {{ drilldown_data }}
+    }
+
+});
+
+</script>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="https://d3js.org/d3.v4.min.js"></script>
+
+        <style>
+            .guaranteed {
+                fill: blue;
+            }
+            .pOption {
+                fill: green;
+            }
+            .tOption {
+                fill: yellow;
+            }
+            .fAgent {
+                fill: grey;
+            }
+            #teamSalary {
+                margin-left: 150px;
+                margin-top: 150px;
+            }
+            #capLine {
+                stroke: orange;
+                stroke-width: 2;
+            }
+            #freeAgents {
+                margin-top: 300px;
+            }
+            #freeAgents input {
+                margin-top: 2.5px;
+            }
+            #freeAgents label {
+                display: inline;
+            }
+        </style>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    </head>
+  <body>
+    <div class="row">
+        <div id="teamSalary" class="col-md-3"></div>
+        <div id="freeAgents" class="col-md-3"></div>
+        <div id="drilldown"></div>
+    </div>
+  </body>
+</html>
+
+<script>
+
+    /* INPUT DATA TODO - make these part of the d3 jinja template*/
+    var data = [
+      {
+        "salary": 23491573,
+        "player_status": "active",
+        "name": "Rudy Gobert",
+        "option": ""
+      },
+      {
+        "salary": 14975000,
+        "player_status": "active",
+        "name": "Ricky Rubio",
+        "option": ""
+      },
+      {
+        "salary": 13045455,
+        "player_status": "active",
+        "name": "Joe Ingles",
+        "option": ""
+      },
+      {
+        "salary": 12000000,
+        "player_status": "active",
+        "name": "Derrick Favors",
+        "option": "fa"
+      },
+      {
+        "salary": 11536515,
+        "player_status": "active",
+        "name": "Alec Burks",
+        "option": ""
+      },
+      {
+        "salary": 10505000,
+        "player_status": "active",
+        "name": "Joe Johnson",
+        "option": "fa"
+      },
+      {
+        "salary": 5250000,
+        "player_status": "active",
+        "name": "Thabo Sefolosha",
+        "option": ""
+      },
+      {
+        "salary": 4992385,
+        "player_status": "active",
+        "name": "Dante Exum",
+        "option": "fa"
+      },
+      {
+        "salary": 4200000,
+        "player_status": "active",
+        "name": "Jonas Jerebko",
+        "option": ""
+      },
+      {
+        "salary": 3360000,
+        "player_status": "active",
+        "name": "Ekpe Udoh",
+        "option": ""
+      },
+      {
+        "salary": 3111480,
+        "player_status": "active",
+        "name": "Donovan Mitchell",
+        "option": ""
+      },
+      {
+        "salary": 2386864,
+        "player_status": "active",
+        "name": "Rodney Hood",
+        "option": "fa"
+      },
+      {
+        "salary": 1471382,
+        "player_status": "active",
+        "name": "Raul Neto",
+        "option": "fa"
+      },
+      {
+        "salary": 1679520,
+        "player_status": "active",
+        "name": "Tony Bradley",
+        "option": ""
+      },
+      {
+        "salary": 1544951,
+        "player_status": "active",
+        "name": "Joel Bolomboy",
+        "option": ""
+      },
+      {
+        "salary": 815615,
+        "player_status": "active",
+        "name": "Naz Mitrou-Long",
+        "option": "fa"
+      },
+      {
+        "salary": 1378242,
+        "player_status": "active",
+        "name": "Royce O'Neale",
+        "option": ""
+      }
+    ]
+
+    // TODO: add free-agent salary from last year
+    var teamSalaryBreakdown = [{
+        'Player Option': 0,
+        'Team Option': 0,
+        'Guaranteed': 83572736
+    }];
+
+    /* END INPUT DATA */
+
+    var isFreeAgent = function(d) { return d['option'] == 'fa' };
+    var isTeamOption = function(d) { return d['option'] == 'salary-tm' };
+    var isGuaranteed = function(d) { return d['option'] == '' };
+    var isPlayerOption = function(d) {
+        var option = d['option'];
+        return (option == 'salary-pl' || option == 'salary-el')
+    };
+
+    function getTeamSalaryBreakdown(data) {
+        var teamSalaryBreakdown = {
+            'Player Option': 0,
+            'Team Option': 0,
+            'Guaranteed': 0,
+            'Free Agent': 0
+        }
+        data.forEach(function(d) {
+            if (isFreeAgent(d)) {
+                teamSalaryBreakdown['Free Agent'] += d['salary'];
+            }
+            else if (isTeamOption(d)) teamSalaryBreakdown['Team Option'] += d['salary'];
+            else if (isPlayerOption(d)) teamSalaryBreakdown['Player Option'] += d['salary'];
+            else teamSalaryBreakdown['Guaranteed'] += d['salary'];
+        })
+        return teamSalaryBreakdown;
+    }
+
+    var contractPlayers = data.filter(function(d) {return ! isFreeAgent(d)});
+    var freeAgents = data.filter(function(d) {return isFreeAgent(d)});
+
+    function drawTeamSalaryBar() {
+
+        var typeToClass = {
+            'Guaranteed': 'guaranteed',
+            'Player Option': 'pOption',
+            'Team Option': 'tOption',
+            'Free Agent': 'fAgent'
+        }
+
+        var width = 120;
+        var height = 500;
+
+        var salaryToHeight = d3.scaleLinear().domain([0, 160000000]).range([height, 0]);
+
+        var keys = ['Guaranteed', 'Team Option', 'Player Option', 'Free Agent'];
+
+        var salaryStack = d3.stack().keys(keys).order(d3.stackOrderNone).offset(d3.stackOffsetNone);
+        var breakdown = getTeamSalaryBreakdown(data);
+        console.log('free agent: ', breakdown['Free Agent']);
+
+        var salarySeries = salaryStack([breakdown]);
+
+        var teamSalarySvg = d3.select("#teamSalary").append("svg")
+                                                    .attr("width", width)
+                                                    .attr("height", height)
+                                                    .attr("class", "teamSalaryBar")
+
+        teamSalarySvg.append("g")
+                     .attr("transform", "translate(" + (width - 30) / 2 + ")")
+                     .selectAll("g")
+                     .data(salarySeries)
+                     .enter()
+                     .append("rect")
+                     .attr("x", 0)
+                     .attr("y", function(d) { return salaryToHeight(d[0][1]) })
+                     .attr("height", function(d) { return salaryToHeight(d[0][0]) - salaryToHeight(d[0][1])})
+                     .attr("width", 30)
+                     .attr("class", function(d) { return typeToClass[d.key] })
+
+        var projectedCap = 103000000;
+        teamSalarySvg.append("line")
+                     .attr("id", "capLine")
+                     .attr("x1", 0)
+                     .attr("y1", function(d) { return salaryToHeight(projectedCap) })
+                     .attr("x2", width)
+                     .attr("y2", function(d) { return salaryToHeight(projectedCap) })
+    }
+
+    function toId(name) {
+        return name.replace(' ', '_');
+    }
+
+    function drawSliders() {
+
+        d3.select('#freeAgents').selectAll("input").data(freeAgents).enter()
+                                .append("label")
+                                    .attr('for', function(d) { return toId(d['name'])})
+                                    .text(function(d) { return d['name']})
+                                .append("input")
+                                    .attr("type", "range")
+                                    .attr("min", 0)
+                                    .attr("max", 30000000)
+                                    .attr("value", function(d) {return d['salary']})
+                                    .attr("id", function(d) {return toId(d['name'])})
+                                    .on("change", function() {
+                                        var playerName = this.parentElement.textContent;
+                                        var newValue = parseInt(this.value);
+
+                                        // iterate over data to change the shits
+                                        for (var i = 0; i < data.length; i++){
+                                            var elem = data[i];
+                                            if (elem.name == playerName) {
+                                                console.log('here changing data', newValue);
+                                                elem.salary = newValue;
+                                            }
+                                        }
+
+                                        console.log('from sliders :', data);
+
+
+                                        d3.select('.teamSalaryBar').remove();
+
+                                        drawTeamSalaryBar();
+                                    })
+    }
+
+    /* initialize */
+    drawTeamSalaryBar();
+    drawSliders();
+
+
+</script>
